@@ -37,6 +37,8 @@ in:
 relative-type:
     2 day ago:
         - 前天
+    in 2 day:
+        - 后天
 
 simplifications:
     - 半小时前: 30分前

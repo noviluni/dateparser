@@ -167,6 +167,9 @@ info = {
         ],
         "2 day ago": [
             "前天"
+        ],
+        "in 2 day": [
+            "后天"
         ]
     },
     "relative-type-regex": {
