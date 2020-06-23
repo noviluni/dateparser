@@ -6,8 +6,6 @@ matrix:
   include:
     - python: 3.8
       env: TOXENV=flake8
-    - python: 2.7
-      env: TOXENV=py27
     - python: pypy
       env: TOXENV=pypy
     - python: 3.5
@@ -45,4 +43,4 @@ deploy:
   on:
     tags: true
     repo: scrapinghub/dateparser
-    condition: "$TOXENV == py27"
+    condition: "$TOXENV == py36"
