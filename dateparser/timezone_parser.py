@@ -1,3 +1,5 @@
+from functools import lru_cache
+
 import regex as re
 from datetime import datetime, timedelta, tzinfo
 
@@ -53,6 +55,7 @@ def convert_to_local_tz(datetime_obj, datetime_tz_offset):
     return datetime_obj - datetime_tz_offset + local_tz_offset
 
 
+@lru_cache
 def build_tz_offsets(search_regex_parts):
 
     def get_offset(tz_obj, regex, repl='', replw=''):
@@ -67,13 +70,13 @@ def build_tz_offsets(search_regex_parts):
     for tz_info in timezone_info_list:
         for regex in tz_info['regex_patterns']:
             for tz_obj in tz_info['timezones']:
-                search_regex_parts.append(tz_obj[0])
+                search_regex_parts += (tz_obj[0],)
                 yield get_offset(tz_obj, regex)
 
             # alternate patterns
             for replace, replacewith in tz_info.get('replace', []):
                 for tz_obj in tz_info['timezones']:
-                    search_regex_parts.append(re.sub(replace, replacewith, tz_obj[0]))
+                    search_regex_parts += (re.sub(replace, replacewith, tz_obj[0]),)
                     yield get_offset(tz_obj, regex, repl=replace, replw=replacewith)
 
 
@@ -83,7 +86,7 @@ def get_local_tz_offset():
     return offset
 
 
-_search_regex_parts = []
+_search_regex_parts = ()
 _tz_offsets = list(build_tz_offsets(_search_regex_parts))
 _search_regex = re.compile('|'.join(_search_regex_parts))
 _search_regex_ignorecase = re.compile(
