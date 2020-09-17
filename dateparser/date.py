@@ -192,62 +192,12 @@ def parse_relative_time(locale, date_string, translated_date_string, date_format
         return None
 
 
-class _DateLocaleParser:
-
-    def __init__(self, locale, date_string, date_formats, settings=None):
-        self._settings = settings
-        if not (date_formats is None or isinstance(date_formats, (list, tuple, Set))):
-            raise TypeError("Date formats should be list, tuple or set of strings")
-
-        self.locale = locale
-        self.date_string = date_string
-        self.date_formats = date_formats
-        self._translated_date = self.locale.translate(
-            self.date_string, keep_formatting=False, settings=self._settings
-        )
-        self._translated_date_with_formatting = self.locale.translate(
-                self.date_string, keep_formatting=True, settings=self._settings
-        )
-        self._parsers = {
+_parsers = {
             'custom-formats': parse_given_formats,
             'timestamp': parse_timestamp,
             'relative-time': parse_relative_time,
             'absolute-time': parse_absolute_time,
         }
-        unknown_parsers = set(self._settings.PARSERS) - set(self._parsers.keys())
-        if unknown_parsers:
-            raise ValueError(
-                'Unknown parsers found in the PARSERS setting: {}'.format(
-                    ', '.join(sorted(unknown_parsers))
-                )
-            )
-
-    @classmethod
-    def parse(cls, locale, date_string, date_formats=None, settings=None):
-        instance = cls(locale, date_string, date_formats, settings)
-        return instance._parse()
-
-    def _parse(self):
-        for parser_name in self._settings.PARSERS:
-            date_obj = self._parsers[parser_name](self.locale, self.date_string, self._translated_date, self.date_formats, self._settings)
-            if self._is_valid_date_obj(date_obj):
-                return date_obj
-        else:
-            return None
-
-    def _is_valid_date_obj(self, date_obj):
-        if not isinstance(date_obj, dict):
-            return False
-        if len(date_obj) != 2:
-            return False
-        if 'date_obj' not in date_obj or 'period' not in date_obj:
-            return False
-        if not date_obj['date_obj']:
-            return False
-        if date_obj['period'] not in ('time', 'day', 'week', 'month', 'year'):
-            return False
-
-        return True
 
 
 class DateDataParser:
@@ -325,6 +275,14 @@ class DateDataParser:
         self.region = region
         self.previous_locales = set()
 
+        unknown_parsers = set(self._settings.PARSERS) - set(_parsers.keys())
+        if unknown_parsers:
+            raise ValueError(
+                'Unknown parsers found in the PARSERS setting: {}'.format(
+                    ', '.join(sorted(unknown_parsers))
+                )
+            )
+
     def get_date_data(self, date_string, date_formats=None):
         """
         Parse string representing date and/or time in recognizable localized formats.
@@ -378,8 +336,7 @@ class DateDataParser:
         date_string = sanitize_date(date_string)
 
         for locale in self._get_applicable_locales(date_string, date_formats):
-            parsed_date = _DateLocaleParser.parse(
-                locale, date_string, date_formats, settings=self._settings)
+            parsed_date = self._parse(locale, date_string, date_formats)
             if parsed_date:
                 parsed_date['locale'] = locale.shortname
                 if self.try_previous_locales:
@@ -387,6 +344,26 @@ class DateDataParser:
                 return parsed_date
         else:
             return {'date_obj': None, 'period': 'day', 'locale': None}
+
+    def _parse(self, locale, date_string, date_formats):
+        for parser_name in self._settings.PARSERS:
+
+            if not (date_formats is None or isinstance(date_formats,
+                                                       (list, tuple, Set))):
+                raise TypeError(
+                    "Date formats should be list, tuple or set of strings")
+
+            _translated_date = locale.translate(
+                date_string, keep_formatting=False, settings=self._settings
+            )
+            # _translated_date_with_formatting = locale.translate(
+            #     date_string, keep_formatting=True, settings=self._settings
+            # )
+            date_obj = _parsers[parser_name](locale, date_string, _translated_date, date_formats, self._settings)
+            if self._is_valid_date_obj(date_obj):
+                return date_obj
+        else:
+            return None
 
     def get_date_tuple(self, *args, **kwargs):
         date_tuple = collections.namedtuple('DateData', 'date_obj period locale')
@@ -436,3 +413,16 @@ class DateDataParser:
         if not cls.locale_loader:
             cls.locale_loader = LocaleDataLoader()
         return cls.locale_loader
+
+    def _is_valid_date_obj(self, date_obj):
+        if not isinstance(date_obj, dict):
+            return False
+        if len(date_obj) != 2:
+            return False
+        if 'date_obj' not in date_obj or 'period' not in date_obj:
+            return False
+        if not date_obj['date_obj']:
+            return False
+        if date_obj['period'] not in ('time', 'day', 'week', 'month', 'year'):
+            return False
+        return True
