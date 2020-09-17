@@ -8,7 +8,8 @@ from unittest.mock import Mock, patch
 from parameterized import parameterized, param
 
 import dateparser
-from dateparser.date import DateDataParser, freshness_date_parser
+from dateparser import DateDataParser
+from dateparser.parsers.relative_time import freshness_date_parser
 from tests import BaseTestCase
 from dateparser.utils import normalize_unicode
 from dateparser.conf import settings
@@ -1648,7 +1649,7 @@ class TestFreshnessDateDataParser(BaseTestCase):
         dt_mock.utcnow = Mock(return_value=self.now)
         dt_mock.now = Mock(side_effect=self.now_with_timezone)
         self.add_patch(patch('dateparser.freshness_date_parser.datetime', new=dt_mock))
-        self.add_patch(patch('dateparser.date.freshness_date_parser', new=self.freshness_parser))
+        self.add_patch(patch('dateparser.parsers.relative_time.freshness_date_parser', new=self.freshness_parser))
         self.parser = DateDataParser(settings=settings)
 
     def when_date_is_parsed(self):

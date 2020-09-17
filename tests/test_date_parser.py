@@ -6,8 +6,8 @@ from unittest.mock import patch, Mock
 from parameterized import parameterized, param
 
 import dateparser.timezone_parser
-from dateparser.date import DateDataParser, date_parser
-from dateparser.date_parser import DateParser
+from dateparser.date import DateDataParser
+from dateparser.date_parser import DateParser, date_parser
 from dateparser.timezone_parser import StaticTzInfo
 from dateparser.utils import normalize_unicode
 
@@ -788,7 +788,7 @@ class TestDateParser(BaseTestCase):
                                     collecting_get_date_data(date_parser.parse)))
 
         self.date_parser = Mock(wraps=date_parser)
-        self.add_patch(patch('dateparser.date.date_parser', new=self.date_parser))
+        self.add_patch(patch('dateparser.parsers.absolute_time.date_parser', new=self.date_parser))
         self.parser = DateDataParser(*args, **kwds)
 
     def when_date_is_parsed(self, date_string):

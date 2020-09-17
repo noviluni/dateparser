@@ -5,13 +5,13 @@ from datetime import datetime, timedelta
 import regex as re
 from dateutil.relativedelta import relativedelta
 
-from dateparser.date_parser import date_parser
-from dateparser.freshness_date_parser import freshness_date_parser
 from dateparser.languages.loader import LocaleDataLoader
 from dateparser.conf import apply_settings
+from dateparser.parsers import existing_parsers
+from dateparser.parsers.custom_formats import parse_with_formats as _parse_with_formats
+from dateparser.parsers.timestamp import get_date_from_timestamp as _get_date_from_timestamp
 from dateparser.timezone_parser import pop_tz_offset_from_string
-from dateparser.utils import apply_timezone_from_settings, \
-    set_correct_day_from_settings
+
 
 APOSTROPHE_LOOK_ALIKE_CHARS = [
     '\N{RIGHT SINGLE QUOTATION MARK}',     # '\u2019'
@@ -35,8 +35,6 @@ RE_SANITIZE_RUSSIAN = re.compile(r'([\W\d])\u0433\.', flags=re.I | re.U)
 RE_SANITIZE_PERIOD = re.compile(r'(?<=\D+)\.', flags=re.U)
 RE_SANITIZE_ON = re.compile(r'^.*?on:\s+(.*)')
 RE_SANITIZE_APOSTROPHE = re.compile('|'.join(APOSTROPHE_LOOK_ALIKE_CHARS))
-
-RE_SEARCH_TIMESTAMP = re.compile(r'^(\d{10})(\d{3})?(\d{3})?(?![^.])')
 
 
 def sanitize_spaces(date_string):
@@ -111,93 +109,13 @@ def sanitize_date(date_string):
 
 
 def get_date_from_timestamp(date_string, settings):
-    match = RE_SEARCH_TIMESTAMP.search(date_string)
-    if match:
-        seconds = int(match.group(1))
-        millis = int(match.group(2) or 0)
-        micros = int(match.group(3) or 0)
-        date_obj = datetime.fromtimestamp(seconds)
-        date_obj = date_obj.replace(microsecond=millis * 1000 + micros)
-        date_obj = apply_timezone_from_settings(date_obj, settings)
-        return date_obj
+    # TODO: Add deprecation: moved to dateparser.parsers.timestamp
+    return _get_date_from_timestamp(date_string, settings)
 
 
 def parse_with_formats(date_string, date_formats, settings):
-    """ Parse with formats and return a dictionary with 'period' and 'obj_date'.
-
-    :returns: :class:`datetime.datetime`, dict or None
-
-    """
-    period = 'day'
-    for date_format in date_formats:
-        try:
-            date_obj = datetime.strptime(date_string, date_format)
-        except ValueError:
-            continue
-        else:
-            if '%d' not in date_format:
-                period = 'month'
-                date_obj = set_correct_day_from_settings(date_obj, settings)
-
-            if not ('%y' in date_format or '%Y' in date_format):
-                today = datetime.today()
-                date_obj = date_obj.replace(year=today.year)
-
-            date_obj = apply_timezone_from_settings(date_obj, settings)
-
-            return {'date_obj': date_obj, 'period': period}
-    else:
-        return {'date_obj': None, 'period': period}
-
-
-def parse_timestamp(locale, date_string, translated_date_string, date_formats, settings):
-    return {
-        'date_obj': get_date_from_timestamp(date_string, settings),
-        'period': 'day',
-    }
-
-
-def parse_given_formats(locale, date_string, translated_date_string, date_formats, settings):
-    if not date_formats:
-        return
-
-    return parse_with_formats(
-        date_string,
-        # self._get_translated_date_with_formatting(),
-        date_formats, settings=settings
-    )
-
-
-def parse_absolute_time(locale, date_string, translated_date_string, date_formats, settings):
-    _order = settings.DATE_ORDER
-    try:
-        if settings.PREFER_LOCALE_DATE_ORDER:
-            if 'DATE_ORDER' not in settings._mod_settings:
-                settings.DATE_ORDER = locale.info.get('date_order', _order)
-        date_obj, period = date_parser.parse(translated_date_string, settings=settings)
-        settings.DATE_ORDER = _order
-        return {
-            'date_obj': date_obj,
-            'period': period,
-        }
-    except ValueError:
-        settings.DATE_ORDER = _order
-        return None
-
-
-def parse_relative_time(locale, date_string, translated_date_string, date_formats, settings):
-    try:
-        return freshness_date_parser.get_date_data(translated_date_string, settings)
-    except (OverflowError, ValueError):
-        return None
-
-
-_parsers = {
-            'custom-formats': parse_given_formats,
-            'timestamp': parse_timestamp,
-            'relative-time': parse_relative_time,
-            'absolute-time': parse_absolute_time,
-        }
+    # TODO: Add deprecation: moved to dateparser.parsers.custom_formats
+    return _parse_with_formats(date_string, date_formats, settings)
 
 
 class DateDataParser:
@@ -275,7 +193,7 @@ class DateDataParser:
         self.region = region
         self.previous_locales = set()
 
-        unknown_parsers = set(self._settings.PARSERS) - set(_parsers.keys())
+        unknown_parsers = set(self._settings.PARSERS) - set(existing_parsers.keys())
         if unknown_parsers:
             raise ValueError(
                 'Unknown parsers found in the PARSERS setting: {}'.format(
@@ -329,9 +247,10 @@ class DateDataParser:
         if not(isinstance(date_string, str) or isinstance(date_string, str)):
             raise TypeError('Input type must be str')
 
-        # res = parse_with_formats(date_string, date_formats or [], self._settings)
-        # if res['date_obj']:
-        #     return res
+        # TODO We should remove the next three lines as it's handled by "custom_formats" parser
+        res = parse_with_formats(date_string, date_formats or [], self._settings)
+        if res['date_obj']:
+            return res
 
         date_string = sanitize_date(date_string)
 
@@ -353,13 +272,15 @@ class DateDataParser:
                 raise TypeError(
                     "Date formats should be list, tuple or set of strings")
 
-            _translated_date = locale.translate(
+            translated_date = locale.translate(
                 date_string, keep_formatting=False, settings=self._settings
             )
-            # _translated_date_with_formatting = locale.translate(
-            #     date_string, keep_formatting=True, settings=self._settings
-            # )
-            date_obj = _parsers[parser_name](locale, date_string, _translated_date, date_formats, self._settings)
+            translated_date_with_formatting = locale.translate(
+                date_string, keep_formatting=True, settings=self._settings
+            )
+            date_obj = existing_parsers[parser_name](
+                locale, date_string, translated_date, translated_date_with_formatting, date_formats, self._settings
+            )
             if self._is_valid_date_obj(date_obj):
                 return date_obj
         else:
