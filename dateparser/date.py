@@ -150,6 +150,48 @@ def parse_with_formats(date_string, date_formats, settings):
         return {'date_obj': None, 'period': period}
 
 
+def parse_timestamp(locale, date_string, translated_date_string, date_formats, settings):
+    return {
+        'date_obj': get_date_from_timestamp(date_string, settings),
+        'period': 'day',
+    }
+
+
+def parse_given_formats(locale, date_string, translated_date_string, date_formats, settings):
+    if not date_formats:
+        return
+
+    return parse_with_formats(
+        date_string,
+        # self._get_translated_date_with_formatting(),
+        date_formats, settings=settings
+    )
+
+
+def parse_absolute_time(locale, date_string, translated_date_string, date_formats, settings):
+    _order = settings.DATE_ORDER
+    try:
+        if settings.PREFER_LOCALE_DATE_ORDER:
+            if 'DATE_ORDER' not in settings._mod_settings:
+                settings.DATE_ORDER = locale.info.get('date_order', _order)
+        date_obj, period = date_parser.parse(translated_date_string, settings=settings)
+        settings.DATE_ORDER = _order
+        return {
+            'date_obj': date_obj,
+            'period': period,
+        }
+    except ValueError:
+        settings.DATE_ORDER = _order
+        return None
+
+
+def parse_relative_time(locale, date_string, translated_date_string, date_formats, settings):
+    try:
+        return freshness_date_parser.get_date_data(translated_date_string, settings)
+    except (OverflowError, ValueError):
+        return None
+
+
 class _DateLocaleParser:
 
     def __init__(self, locale, date_string, date_formats, settings=None):
@@ -160,13 +202,17 @@ class _DateLocaleParser:
         self.locale = locale
         self.date_string = date_string
         self.date_formats = date_formats
-        self._translated_date = None
-        self._translated_date_with_formatting = None
+        self._translated_date = self.locale.translate(
+            self.date_string, keep_formatting=False, settings=self._settings
+        )
+        self._translated_date_with_formatting = self.locale.translate(
+                self.date_string, keep_formatting=True, settings=self._settings
+        )
         self._parsers = {
-            'timestamp': self._try_timestamp,
-            'relative-time': self._try_freshness_parser,
-            'custom-formats': self._try_given_formats,
-            'absolute-time': self._try_parser,
+            'custom-formats': parse_given_formats,
+            'timestamp': parse_timestamp,
+            'relative-time': parse_relative_time,
+            'absolute-time': parse_absolute_time,
         }
         unknown_parsers = set(self._settings.PARSERS) - set(self._parsers.keys())
         if unknown_parsers:
@@ -183,61 +229,11 @@ class _DateLocaleParser:
 
     def _parse(self):
         for parser_name in self._settings.PARSERS:
-            date_obj = self._parsers[parser_name]()
+            date_obj = self._parsers[parser_name](self.locale, self.date_string, self._translated_date, self.date_formats, self._settings)
             if self._is_valid_date_obj(date_obj):
                 return date_obj
         else:
             return None
-
-    def _try_timestamp(self):
-        return {
-            'date_obj': get_date_from_timestamp(self.date_string, self._settings),
-            'period': 'day',
-        }
-
-    def _try_freshness_parser(self):
-        try:
-            return freshness_date_parser.get_date_data(self._get_translated_date(), self._settings)
-        except (OverflowError, ValueError):
-            return None
-
-    def _try_parser(self):
-        _order = self._settings.DATE_ORDER
-        try:
-            if self._settings.PREFER_LOCALE_DATE_ORDER:
-                if 'DATE_ORDER' not in self._settings._mod_settings:
-                    self._settings.DATE_ORDER = self.locale.info.get('date_order', _order)
-            date_obj, period = date_parser.parse(
-                self._get_translated_date(), settings=self._settings)
-            self._settings.DATE_ORDER = _order
-            return {
-                'date_obj': date_obj,
-                'period': period,
-            }
-        except ValueError:
-            self._settings.DATE_ORDER = _order
-            return None
-
-    def _try_given_formats(self):
-        if not self.date_formats:
-            return
-
-        return parse_with_formats(
-            self._get_translated_date_with_formatting(),
-            self.date_formats, settings=self._settings
-        )
-
-    def _get_translated_date(self):
-        if self._translated_date is None:
-            self._translated_date = self.locale.translate(
-                self.date_string, keep_formatting=False, settings=self._settings)
-        return self._translated_date
-
-    def _get_translated_date_with_formatting(self):
-        if self._translated_date_with_formatting is None:
-            self._translated_date_with_formatting = self.locale.translate(
-                self.date_string, keep_formatting=True, settings=self._settings)
-        return self._translated_date_with_formatting
 
     def _is_valid_date_obj(self, date_obj):
         if not isinstance(date_obj, dict):
@@ -375,13 +371,13 @@ class DateDataParser:
         if not(isinstance(date_string, str) or isinstance(date_string, str)):
             raise TypeError('Input type must be str')
 
-        res = parse_with_formats(date_string, date_formats or [], self._settings)
-        if res['date_obj']:
-            return res
+        # res = parse_with_formats(date_string, date_formats or [], self._settings)
+        # if res['date_obj']:
+        #     return res
 
         date_string = sanitize_date(date_string)
 
-        for locale in self._get_applicable_locales(date_string):
+        for locale in self._get_applicable_locales(date_string, date_formats):
             parsed_date = _DateLocaleParser.parse(
                 locale, date_string, date_formats, settings=self._settings)
             if parsed_date:
@@ -397,7 +393,7 @@ class DateDataParser:
         date_data = self.get_date_data(*args, **kwargs)
         return date_tuple(**date_data)
 
-    def _get_applicable_locales(self, date_string):
+    def _get_applicable_locales(self, date_string, date_formats):
         pop_tz_cache = []
 
         def date_strings():
@@ -426,7 +422,7 @@ class DateDataParser:
                 languages=self.languages, locales=self.locales, region=self.region,
                 use_given_order=self.use_given_order):
             for s in date_strings():
-                if self._is_applicable_locale(locale, s):
+                if self._is_applicable_locale(locale, s) or date_formats:
                     yield locale
 
     def _is_applicable_locale(self, locale, date_string):
