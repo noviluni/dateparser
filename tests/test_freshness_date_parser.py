@@ -8,7 +8,7 @@ from unittest.mock import Mock, patch
 from parameterized import parameterized, param
 
 import dateparser
-from dateparser.date import DateDataParser, freshness_date_parser
+from dateparser.date import DateDataParser
 from tests import BaseTestCase
 from dateparser.utils import normalize_unicode
 from dateparser.conf import settings
@@ -1529,7 +1529,8 @@ class TestFreshnessDateDataParser(BaseTestCase):
             'RELATIVE_BASE': datetime(2014, 9, 1, 10, 30)
         })
 
-        parser = dateparser.freshness_date_parser.FreshnessDateDataParser()
+        # TODO: Fix
+        # parser = dateparser.freshness_date_parser.FreshnessDateDataParser()
         parser.get_local_tz = Mock(return_value=pytz.timezone('US/Eastern'))
         result = parser.get_date_data('1 minute ago', _settings)
         result = result['date_obj']
@@ -1637,6 +1638,7 @@ class TestFreshnessDateDataParser(BaseTestCase):
                 self.freshness_result = get_date_data(*args, **kwargs)
                 return self.freshness_result
             return wrapped
+        # TODO: Fix
         self.add_patch(patch.object(freshness_date_parser,
                                     'get_date_data',
                                     collecting_get_date_data(freshness_date_parser.get_date_data)))

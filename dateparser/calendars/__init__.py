@@ -1,6 +1,7 @@
-from dateparser.parser import _parser
 from dateparser.conf import settings
 from datetime import datetime
+
+from dateparser.parsers.absolute_time_parser import _AbsoluteTimeParser
 
 
 class CalendarBase:
@@ -24,7 +25,7 @@ class CalendarBase:
             pass
 
 
-class non_gregorian_parser(_parser):
+class non_gregorian_parser(_AbsoluteTimeParser):
 
     calendar_converter = NotImplemented
     default_year = NotImplemented

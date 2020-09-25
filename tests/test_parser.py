@@ -1,12 +1,12 @@
 from datetime import datetime, time
 
 from parameterized import parameterized, param
+from dateparser.parsers import _time_parser_obj
+from dateparser.parsers.absolute_time_parser import _AbsoluteTimeParser
+from dateparser.parsers.no_spaces_time_parser import _NoSpacesTimeParser
 from tests import BaseTestCase
 
-from dateparser.parser import tokenizer
-from dateparser.parser import _no_spaces_parser
-from dateparser.parser import _parser
-from dateparser.parser import time_parser
+from dateparser.utils.string import _Tokenizer
 from dateparser.conf import apply_settings
 
 
@@ -54,13 +54,13 @@ class TestTokenizer(BaseTestCase):
             expected_types=[1, 2, 0, 2, 0, 2, 0, 2, 1, 2, 1, 2],
         ),
         param(
-            date_string=tokenizer.digits,
-            expected_tokens=[tokenizer.digits],
+            date_string=_Tokenizer.digits,
+            expected_tokens=[_Tokenizer.digits],
             expected_types=[0],
         ),
         param(
-            date_string=tokenizer.letters,
-            expected_tokens=[tokenizer.letters],
+            date_string=_Tokenizer.letters,
+            expected_tokens=[_Tokenizer.letters],
             expected_types=[1],
         ),
         param(
@@ -76,7 +76,7 @@ class TestTokenizer(BaseTestCase):
         self.then_token_types_were(expected_types)
 
     def given_tokenizer(self, date_string):
-        self.tokenizer = tokenizer(date_string)
+        self.tokenizer = _Tokenizer(date_string)
 
     def when_tokenized(self):
         self.result = list(self.tokenizer.tokenize())
@@ -353,7 +353,7 @@ class TestNoSpaceParser(BaseTestCase):
         self.then_returned_period_is(expected_period)
 
     def given_parser(self):
-        self.parser = _no_spaces_parser
+        self.parser = _NoSpacesTimeParser
 
     @apply_settings
     def given_settings(self, settings=None):
@@ -447,7 +447,7 @@ class TestParser(BaseTestCase):
         self.then_error_was_raised(ValueError, ['Nothing date like found'])
 
     def given_parser(self):
-        self.parser = _parser
+        self.parser = _AbsoluteTimeParser
 
     @apply_settings
     def given_settings(self, settings=None):
@@ -500,7 +500,7 @@ class TestTimeParser(BaseTestCase):
         self.then_error_was_raised(ValueError, ['{} does not seem to be a valid time string'.format(date_string)])
 
     def given_parser(self):
-        self.parser = time_parser
+        self.parser = _time_parser_obj
 
     def when_time_is_parsed(self, datestring):
         try:
