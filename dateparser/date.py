@@ -1,5 +1,8 @@
 import collections
+import locale
+import threading
 from collections.abc import Set
+from contextlib import contextmanager
 from datetime import datetime, timedelta
 
 import regex as re
@@ -123,19 +126,39 @@ def get_date_from_timestamp(date_string, settings):
         return date_obj
 
 
-def parse_with_formats(date_string, date_formats, settings):
+LOCALE_LOCK = threading.Lock()
+
+
+@contextmanager
+def setlocale(name):
+    with LOCALE_LOCK:
+        saved = locale.setlocale(locale.LC_ALL)
+        try:
+            yield locale.setlocale(locale.LC_ALL, name)
+        except:
+            yield
+        finally:
+            locale.setlocale(locale.LC_ALL, saved)
+
+
+def parse_with_formats(date_string, date_formats, settings, locales=None, languages=None):
     """ Parse with formats and return a dictionary with 'period' and 'obj_date'.
 
     :returns: :class:`datetime.datetime`, dict or None
 
     """
     period = 'day'
+    locales = (locales or []) + (languages or [])
+    if not locales:
+        locales = [locale.getlocale()[0]]
     for date_format in date_formats:
-        try:
-            date_obj = datetime.strptime(date_string, date_format)
-        except ValueError:
-            continue
-        else:
+        for loc in locales:
+            with setlocale(locale.normalize(loc+'.utf8')):
+                try:
+                    date_obj = datetime.strptime(date_string, date_format)
+                except ValueError:
+                    continue
+
             if '%d' not in date_format:
                 period = 'month'
                 date_obj = set_correct_day_from_settings(date_obj, settings)
@@ -232,7 +255,7 @@ class _DateLocaleParser:
 
         return parse_with_formats(
             self._get_translated_date_with_formatting(),
-            self.date_formats, settings=self._settings
+            self.date_formats, settings=self._settings, locale=self.locale
         )
 
     def _get_translated_date(self):
@@ -383,7 +406,7 @@ class DateDataParser:
         if not isinstance(date_string, str):
             raise TypeError('Input type must be str')
 
-        res = parse_with_formats(date_string, date_formats or [], self._settings)
+        res = parse_with_formats(date_string, date_formats or [], self._settings, self.locales, self.languages)
         if res['date_obj']:
             return res
 
