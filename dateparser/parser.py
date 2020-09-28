@@ -3,7 +3,7 @@
 from dateparser.parsers import _resolve_date_order, _TimeParser
 from dateparser.parsers.absolute_time_parser import \
     MICROSECOND as _MICROSECOND, HOUR_MINUTE_REGEX as _HOUR_MINUTE_REGEX, \
-        MERIDIAN as _MERIDIAN, _get_unresolved_attrs
+    MERIDIAN as _MERIDIAN, _get_unresolved_attrs
 from dateparser.parsers.no_spaces_time_parser import \
     EIGHT_DIGIT as _EIGHT_DIGIT, \
     NSP_COMPATIBLE as _NSP_COMPATIBLE, _no_space_parser_eligibile

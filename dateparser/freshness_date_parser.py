@@ -9,4 +9,5 @@ class FreshnessDateDataParser(_RelativeTimeParser):
     # TODO: add deprecation warning
     pass
 
+
 freshness_date_parser = _RelativeTimeParser()  # TODO: add deprecation warning

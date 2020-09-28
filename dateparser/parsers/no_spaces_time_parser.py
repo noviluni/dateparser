@@ -93,7 +93,7 @@ class _NoSpacesTimeParser:
             raise ValueError("Empty string")
         tokens = _Tokenizer(datestring)
         if settings.DATE_ORDER:
-            order = resolve_date_order(settings.DATE_ORDER)
+            order = _resolve_date_order(settings.DATE_ORDER)
         else:
             order = cls._default_order
             if EIGHT_DIGIT.match(datestring):

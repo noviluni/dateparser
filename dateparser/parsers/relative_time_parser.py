@@ -14,7 +14,9 @@ PATTERN = re.compile(r'(\d+)\s*(%s)\b' % _UNITS, re.I | re.S | re.U)
 
 def parse_relative_time(date_string, settings, locale):
     try:
-        return _relative_time_parser.get_date_data(_get_translated_date(locale, date_string, False, settings), settings)
+        return _relative_time_parser.get_date_data(
+            _get_translated_date(locale, date_string, False, settings), settings
+        )
     except (OverflowError, ValueError):
         return None
 

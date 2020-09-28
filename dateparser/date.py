@@ -241,7 +241,9 @@ class DateDataParser:
 
         for locale in self._get_applicable_locales(date_string):
             for parser in self._settings.PARSERS:
-                parsed_date = existing_parsers[parser](date_string, settings=self._settings, locale=locale)  # TODO: Add date_formats?
+                parsed_date = existing_parsers[parser](
+                    date_string, settings=self._settings, locale=locale
+                )  # TODO: Add date_formats?
                 if parsed_date and self._is_valid_date_obj(parsed_date):
                     parsed_date['locale'] = locale.shortname
                     if self.try_previous_locales:

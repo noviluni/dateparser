@@ -5,7 +5,7 @@ from dateparser.utils import apply_timezone_from_settings, \
     set_correct_day_from_settings
 
 
-def parse_custom_formats(date_string, settings, locale, date_formats):  # TODO: fix date_formats
+def parse_custom_formats(date_string, settings, locale, date_formats=None):  # TODO: fix date_formats
     if not date_formats:
         return
     return _parse_with_formats(

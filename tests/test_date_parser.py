@@ -2,12 +2,13 @@ import unittest
 from datetime import datetime, timedelta
 from functools import wraps
 
-from unittest.mock import patch, Mock
+from unittest.mock import patch
 from parameterized import parameterized, param
 
 import dateparser.timezone_parser
 from dateparser.date import DateDataParser
 from dateparser.date_parser import DateParser
+from dateparser.parsers.absolute_time_parser import _parse_absolute
 from dateparser.timezone_parser import StaticTzInfo
 from dateparser.utils import normalize_unicode
 

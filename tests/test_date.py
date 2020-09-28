@@ -685,13 +685,12 @@ class TestDateLocaleParser(BaseTestCase):
         param(date_obj={'date': datetime(2018, 1, 10, 2, 0), 'period': 'time'}),
     ])
     def test_is_valid_date_obj(self, date_obj):
-        self.given_parser(language=['en'], date_string='10 jan 2000',
-                          date_formats=None, settings=settings)
+        self.given_parser(language=['en'], settings=settings)
         self.when_date_object_is_validated(date_obj)
         self.then_date_object_is_invalid()
 
-    def given_parser(self, language, date_string, date_formats, settings):
-        self.parser = date._DateLocaleParser(language, date_string, date_formats, settings)
+    def given_parser(self, language, settings):
+        self.parser = date.DateDataParser(language, settings=settings)
 
     def when_date_object_is_validated(self, date_obj):
         self.is_valid_date_obj = self.parser._is_valid_date_obj(date_obj)

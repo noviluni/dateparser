@@ -1529,8 +1529,7 @@ class TestFreshnessDateDataParser(BaseTestCase):
             'RELATIVE_BASE': datetime(2014, 9, 1, 10, 30)
         })
 
-        # TODO: Fix
-        # parser = dateparser.freshness_date_parser.FreshnessDateDataParser()
+        parser = dateparser.parsers.relative_time_parser._RelativeTimeParser()
         parser.get_local_tz = Mock(return_value=pytz.timezone('US/Eastern'))
         result = parser.get_date_data('1 minute ago', _settings)
         result = result['date_obj']
@@ -1639,6 +1638,7 @@ class TestFreshnessDateDataParser(BaseTestCase):
                 return self.freshness_result
             return wrapped
         # TODO: Fix
+        freshness_date_parser = dateparser.parsers.relative_time_parser._RelativeTimeParser()
         self.add_patch(patch.object(freshness_date_parser,
                                     'get_date_data',
                                     collecting_get_date_data(freshness_date_parser.get_date_data)))
@@ -1646,7 +1646,7 @@ class TestFreshnessDateDataParser(BaseTestCase):
         self.freshness_parser = Mock(wraps=freshness_date_parser)
         self.add_patch(patch.object(self.freshness_parser, 'now', self.now))
 
-        dt_mock = Mock(wraps=dateparser.freshness_date_parser.datetime)
+        dt_mock = Mock(wraps=dateparser.parsers.relative_time_parser.datetime)
         dt_mock.utcnow = Mock(return_value=self.now)
         dt_mock.now = Mock(side_effect=self.now_with_timezone)
         self.add_patch(patch('dateparser.freshness_date_parser.datetime', new=dt_mock))
